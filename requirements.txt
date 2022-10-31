@@ -1,0 +1,25 @@
+gdown
+json5
+networkx
+numpy
+pandas
+scikit-learn
+scipy
+seaborn
+torch
+torchvision
+tqdm
+magic-impute
+scprep
+scanpy
+slingpy
+causal-learn
+causaldag
+python-igraph
+gies
+
+# Development-only dependencies
+black~=22.3.0
+pre-commit~=2.19.0
+pre-commit-hooks~=4.2.0
+isort~=5.10.1

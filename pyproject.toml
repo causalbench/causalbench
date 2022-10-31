@@ -1,0 +1,57 @@
+[tool.black]
+# Documentation: https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
+line-length = 120
+target-version = ["py38"]
+
+[tool.isort]
+# Documentation: https://pycqa.github.io/isort/docs/configuration/config_files.html
+# See also: https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html?highlight=line%20length#isort
+profile="black"
+skip_gitignore="true"
+line_length=120
+known_third_party = ["slingpy"]
+
+# mypy usage is optional
+[tool.mypy]
+# Documentation: https://mypy.readthedocs.io/en/stable/config_file.html#
+ignore_missing_imports=1
+
+[tool.pytest.ini_options]
+# Documentation: https://docs.pytest.org/en/7.1.x/reference/customize.html
+testpaths=[
+    "tests",
+    "slingpy/tests",
+]
+# Parallelize across 3 cores by default (usign pytest-xdist)
+addopts="-n3"
+
+[tool.coverage.run]
+# Documentation: https://coverage.readthedocs.io/en/latest/config.html#run
+source=[
+    "causalbench",
+    "slingpy",
+]
+# Exclude files that are included by the --cov_dir=. workaround in ci-pipeline.yml
+omit=[
+    "*/setup.py",
+    "*/tests/*",
+]
+
+[tool.coverage.report]
+# Documentation: https://coverage.readthedocs.io/en/latest/config.html#report
+exclude_lines = [
+    # Have to re-enable the standard pragma
+    "pragma: no cover",
+
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self\\.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+]
