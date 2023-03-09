@@ -1,6 +1,5 @@
 """
  Copyright (c) 2020 Philippe Brouillard, Sébastien Lachapelle, Alexandre Lacoste (Element AI Inc.), Simon Lacoste-Julien, Alexandre Drouin (Element AI Inc.)
-
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), 
 to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
 and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: 
@@ -12,8 +11,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 """
 import torch
 from torch.autograd import Variable
-
-from ..torchkit import SigmoidFlow, log_normal
+from ..torchkit import log_normal, SigmoidFlow
 from .base_model import BaseModel
 
 

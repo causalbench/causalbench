@@ -1,12 +1,10 @@
 """
-Copyright 2021 GSK plc
+Copyright (C) 2022  GlaxoSmithKline plc - Mathieu Chevalley;
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,7 +34,6 @@ def causallearn_graph_to_edges(G: GeneralGraph, gene_names: List[str]):
             edges.append((gene_names[node1_id], gene_names[node2_id]))
     return edges
 
-
 def partion_network(gene_names, partitions_length, seed):
     random.seed(seed)
     indices = list(range(len(gene_names)))
@@ -44,7 +41,6 @@ def partion_network(gene_names, partitions_length, seed):
     partition_length = int(len(indices) / partitions_length)
     partitions = [indices[i::partition_length] for i in range(partition_length)]
     return partitions
-
 
 def remove_lowly_expressed_genes(expression_matrix: np.array, gene_names: List[str], expression_threshold=0.8):
     """Remove genes with low expression.
