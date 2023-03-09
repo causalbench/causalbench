@@ -28,7 +28,7 @@ addopts="-n3"
 [tool.coverage.run]
 # Documentation: https://coverage.readthedocs.io/en/latest/config.html#run
 source=[
-    "squelette",
+    "causalscbench",
     "slingpy",
 ]
 # Exclude files that are included by the --cov_dir=. workaround in ci-pipeline.yml
