@@ -22,8 +22,8 @@ from causalscbench.data_access.create_dataset import CreateDataset
 from causalscbench.data_access.create_evaluation_datasets import \
     CreateEvaluationDatasets
 from causalscbench.data_access.utils.splitting import DatasetSplitter
-from causalscbench.evaluation import (qualitative_evaluation,
-                                      quantitative_evaluation)
+from causalscbench.evaluation import (biological_evaluation,
+                                      statistical_evaluation)
 
 
 class EvalApp:
@@ -72,18 +72,18 @@ class EvalApp:
             string_physical_pairs,
             chipseq_pairs_rpe1
         ) = CreateEvaluationDatasets(self.data_directory, "weissmann_rpe1").load()
-        self.corum_evaluator = qualitative_evaluation.Evaluator(corum)
-        self.lr_evaluator = qualitative_evaluation.Evaluator(lr_pairs)
-        self.string_network_evaluator = qualitative_evaluation.Evaluator(
+        self.corum_evaluator = biological_evaluation.Evaluator(corum)
+        self.lr_evaluator = biological_evaluation.Evaluator(lr_pairs)
+        self.string_network_evaluator = biological_evaluation.Evaluator(
             string_network_pairs
         )
-        self.string_physical_evaluator = qualitative_evaluation.Evaluator(
+        self.string_physical_evaluator = biological_evaluation.Evaluator(
             string_physical_pairs
         )
-        self.chipseq_evaluator_k562 = qualitative_evaluation.Evaluator(
+        self.chipseq_evaluator_k562 = biological_evaluation.Evaluator(
             chipseq_pairs_k562
         )
-        self.chipseq_evaluator_rpe1 = qualitative_evaluation.Evaluator(
+        self.chipseq_evaluator_rpe1 = biological_evaluation.Evaluator(
             chipseq_pairs_rpe1
         )
         (
@@ -91,7 +91,7 @@ class EvalApp:
             interventions_test,
             gene_names,
         ) = self.dataset_splitter_k562.get_test_data()
-        self.quantitative_evaluator_k562 = quantitative_evaluation.Evaluator(
+        self.quantitative_evaluator_k562 = statistical_evaluation.Evaluator(
             expression_matrix_test, interventions_test, gene_names
         )
         (
@@ -99,7 +99,7 @@ class EvalApp:
             interventions_test,
             gene_names,
         ) = self.dataset_splitter_rpe1.get_test_data()
-        self.quantitative_evaluator_rpe1 = quantitative_evaluation.Evaluator(
+        self.quantitative_evaluator_rpe1 = statistical_evaluation.Evaluator(
             expression_matrix_test, interventions_test, gene_names
         )
 

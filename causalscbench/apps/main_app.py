@@ -25,8 +25,8 @@ from causalscbench.data_access.create_dataset import CreateDataset
 from causalscbench.data_access.create_evaluation_datasets import \
     CreateEvaluationDatasets
 from causalscbench.data_access.utils.splitting import DatasetSplitter
-from causalscbench.evaluation import (qualitative_evaluation,
-                                      quantitative_evaluation)
+from causalscbench.evaluation import (biological_evaluation,
+                                      statistical_evaluation)
 from causalscbench.models import training_regimes
 from causalscbench.models.arboreto_baselines import GENIE, GRNBoost
 from causalscbench.models.causallearn_models import GES, PC
@@ -179,21 +179,21 @@ class MainApp:
             string_physical_pairs,
             chipseq_pairs,
         ) = CreateEvaluationDatasets(self.data_directory, self.dataset_name).load()
-        self.corum_evaluator = qualitative_evaluation.Evaluator(corum)
-        self.lr_evaluator = qualitative_evaluation.Evaluator(lr_pairs)
-        self.string_network_evaluator = qualitative_evaluation.Evaluator(
+        self.corum_evaluator = biological_evaluation.Evaluator(corum)
+        self.lr_evaluator = biological_evaluation.Evaluator(lr_pairs)
+        self.string_network_evaluator = biological_evaluation.Evaluator(
             string_network_pairs
         )
-        self.string_physical_evaluator = qualitative_evaluation.Evaluator(
+        self.string_physical_evaluator = biological_evaluation.Evaluator(
             string_physical_pairs
         )
-        self.chipseq_evaluator = qualitative_evaluation.Evaluator(chipseq_pairs)
+        self.chipseq_evaluator = biological_evaluation.Evaluator(chipseq_pairs)
         (
             expression_matrix_test,
             interventions_test,
             gene_names,
         ) = self.dataset_splitter.get_test_data()
-        self.quantitative_evaluator = quantitative_evaluation.Evaluator(
+        self.quantitative_evaluator = statistical_evaluation.Evaluator(
             expression_matrix_test, interventions_test, gene_names
         )
 

@@ -1,12 +1,10 @@
 """
-Copyright 2021 GSK plc
+Copyright (C) 2022  GlaxoSmithKline plc - Mathieu Chevalley;
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,11 +42,17 @@ class Evaluator(object):
                 edges.add((i, j))
         return list(edges)
 
-    def evaluate_network(self, network: List[Tuple]) -> Dict:
+    def evaluate_network(self, network: List[Tuple], directed: bool = False) -> Dict:
         true_positives = 0
+        if not directed:
+            network_undirected = set()
+            for i, j in network:
+                network_undirected.add((i, j))
+                network_undirected.add((j, i))
+            network = network_undirected
         for edge in network:
             if edge in self.ground_truth_subnetwork:
                 true_positives += 1
         return {
-            "true_positives": true_positives,
+            "true_positives": true_positives if directed else true_positives / 2,
         }

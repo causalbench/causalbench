@@ -1,18 +1,17 @@
 """
-Copyright 2021 GSK plc
+Copyright (C) 2022  GlaxoSmithKline plc - Mathieu Chevalley;
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -70,21 +69,75 @@ class Evaluator(object):
             self.gene_to_interventions[parent], self.gene_to_index[child]
         ]
 
-    def evaluate_network(self, network: List[Tuple]) -> Dict:
+    def evaluate_network(self, network: List[Tuple], max_path_length = 3) -> Dict:
         """
         Use a non-parametric Mannwhitney rank-sum test to test wether perturbing an upstream does have
         an effect on the downstream children genes. The assumptions is that intervening on a parent gene
-        should have an effect on the distribution of the expression of a child gene in the network.
+        should have an effect on the distribution of the expression of a child gene in the network. Also consider
+        the all connected graph with the same evaluation (all pairs such that there is a directed path between them)
 
         Args:
             network: output network as a list of tuples, where (A, B) indicates that gene A acts on gene B
+            max_path_length: maximum length of paths to consider for evaluation
 
         Returns:
-            Number of true positive and false positive edges
+            Number of true positive and false positive edges for both original graph and all connected graph
         """
         network_as_dict = {}
         for a, b in network:
             network_as_dict.setdefault(a, set()).add(b)
+        true_positive, false_positive, wasserstein_distances = self._evaluate_network(
+            network_as_dict
+        )
+
+        all_connected_network = {**network_as_dict}
+
+        # Augment graph with paths of length smaller or equal to max_path_length
+        for _ in range(max_path_length - 1):
+            new_all_connected_network = {
+                v: n.union(
+                    *[
+                        all_connected_network[nn]
+                        for nn in n
+                        if nn in all_connected_network
+                    ]
+                )
+                for v, n in all_connected_network.items()
+            }
+            if new_all_connected_network == all_connected_network:
+                break
+            all_connected_network = new_all_connected_network
+
+        all_connected_network = {v: c - {v} for v, c in all_connected_network.items()}
+        if all_connected_network == network_as_dict:
+            (
+                true_positive_connected,
+                false_positive_connected,
+                wasserstein_distances_connected,
+            ) = true_positive, false_positive, wasserstein_distances
+        else: 
+            (
+                true_positive_connected,
+                false_positive_connected,
+                wasserstein_distances_connected,
+            ) = self._evaluate_network(all_connected_network)
+
+        return {
+            "output_graph": {
+                "true_positives": true_positive,
+                "false_positives": false_positive,
+                "wasserstein_distance": {"mean": np.mean(wasserstein_distances)},
+            },
+            "all_path_output": {
+                "true_positives": true_positive_connected,
+                "false_positives": false_positive_connected,
+                "wasserstein_distance": {
+                    "mean": np.mean(wasserstein_distances_connected)
+                },
+            },
+        }
+
+    def _evaluate_network(self, network_as_dict):
         true_positive = 0
         false_positive = 0
         wasserstein_distances = []
@@ -93,7 +146,9 @@ class Evaluator(object):
             for child in children:
                 observational_samples = self.get_observational(child)
                 interventional_samples = self.get_interventional(child, parent)
-                wasserstein_distance = scipy.stats.wasserstein_distance(observational_samples, interventional_samples)
+                wasserstein_distance = scipy.stats.wasserstein_distance(
+                    observational_samples, interventional_samples
+                )
                 wasserstein_distances.append(wasserstein_distance)
                 fraction_outliers = 1 - (
                     sum(observational_samples > 0.0) / len(observational_samples)
@@ -119,12 +174,4 @@ class Evaluator(object):
                     true_positive += 1
                 else:
                     false_positive += 1
-                
-
-        return {
-            "true_positives": true_positive,
-            "false_positives": false_positive,
-            "wasserstein_distance": {
-                "mean": np.mean(wasserstein_distances)
-            }
-        }
+        return true_positive, false_positive, wasserstein_distances
