@@ -15,7 +15,9 @@ from causalscbench.data_access.utils import download
 
 
 def download_corum(output_directory):
-    URL = "https://mips.helmholtz-muenchen.de/corum/download/releases/current/humanComplexes.txt.zip"
+    # NOTE: Temporarily providing a mirror for the CORUM file due to the below page being impacted by downtime.
+    # URL = "https://mips.helmholtz-muenchen.de/corum/download/releases/current/humanComplexes.txt.zip"
+    URL = "https://github.com/causalbench/causalbench-mirror/blob/main/corum_complexes.txt.zip?raw=true"
     filename = "corum_complexes.txt.zip"
     path = download.download_if_not_exist(URL, output_directory, filename)
     return path
