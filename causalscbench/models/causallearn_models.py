@@ -36,11 +36,8 @@ class GES(AbstractInferenceModel):
         if not training_regime == TrainingRegime.Observational:
             return []
         expression_matrix, gene_names = remove_lowly_expressed_genes(
-<<<<<<< HEAD
+
             expression_matrix, gene_names, expression_threshold=0.5
-=======
-            expression_matrix, gene_names, expression_threshold=0.75
->>>>>>> public/master
         )
         gene_names = np.array(gene_names)
 
@@ -50,11 +47,7 @@ class GES(AbstractInferenceModel):
             res_map = causallearn.search.ScoreBased.GES.ges(
                 expression_matrix_,
                 score_func="local_score_BIC",
-<<<<<<< HEAD
                 maxP=10,
-=======
-                maxP=20,
->>>>>>> public/master
                 parameters=None,
             )
             G = res_map["G"]
@@ -85,11 +78,8 @@ class PC(AbstractInferenceModel):
         if not training_regime == TrainingRegime.Observational:
             return []
         expression_matrix, gene_names = remove_lowly_expressed_genes(
-<<<<<<< HEAD
+
             expression_matrix, gene_names, expression_threshold=0.5
-=======
-            expression_matrix, gene_names, expression_threshold=0.75
->>>>>>> public/master
         )
         gene_names = np.array(gene_names)
 

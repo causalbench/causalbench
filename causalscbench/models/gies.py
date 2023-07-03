@@ -34,11 +34,7 @@ class GIES(AbstractInferenceModel):
         seed: int = 0,
     ) -> List[Tuple]:
         expression_matrix, gene_names = remove_lowly_expressed_genes(
-<<<<<<< HEAD
             expression_matrix, gene_names, expression_threshold=0.5
-=======
-            expression_matrix, gene_names, expression_threshold=0.75
->>>>>>> public/master
         )
         gene_names = np.array(gene_names)
         interventions = list(interventions)

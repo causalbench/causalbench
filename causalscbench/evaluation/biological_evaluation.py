@@ -20,7 +20,7 @@ from causalscbench.models.training_regimes import TrainingRegime
 class Evaluator(object):
     def __init__(self, ground_truth_subnetwork: Set[Tuple[str]]) -> None:
         """
-        Evaluation module to qualitatively evaluate a network using ground-truth biological data.
+        Evaluation module to biologically evaluate a network using ground-truth biological data.
 
         Args:
             ground_truth_subnetwork: list of know gene-gene interactions
