@@ -28,9 +28,24 @@ class DataManagerFile(object):
     A data loader, it can load data, split in train/test, shuffle, normalize, etc.
     NOTE: the 0-th regime should always be the observational one
     """
-    def __init__(self, data, masks, regimes, train_samples=0.8, test_samples=None, train=True,
-                 normalize=False, mean=None, std=None, random_seed=42, intervention=False,
-                 intervention_knowledge="known", dcd=False, regimes_to_ignore=None):
+
+    def __init__(
+        self,
+        data,
+        masks,
+        regimes,
+        train_samples=0.8,
+        test_samples=None,
+        train=True,
+        normalize=False,
+        mean=None,
+        std=None,
+        random_seed=42,
+        intervention=False,
+        intervention_knowledge="known",
+        dcd=False,
+        regimes_to_ignore=None,
+    ):
         """
         :param str file_path: Path to the data and the DAG
         :param int i_dataset: Exemplar to use (usually in [1,10])
@@ -54,8 +69,10 @@ class DataManagerFile(object):
         elif intervention_knowledge == "unknown":
             self.interv_known = False
         else:
-            raise ValueError("intervention_knowledge should either be 'known' \
-                             or 'unknown'")
+            raise ValueError(
+                "intervention_knowledge should either be 'known' \
+                             or 'unknown'"
+            )
 
         # index of all regimes, even if not used in the regimes_to_ignore case
         self.all_regimes = np.unique(regimes)
@@ -64,19 +81,25 @@ class DataManagerFile(object):
         if regimes_to_ignore is not None and self.intervention:
             for regime_to_ignore in regimes_to_ignore:
                 if regime_to_ignore not in self.all_regimes:
-                    raise ValueError(f"Regime {regime_to_ignore} is not in the possible regimes: {self.all_regimes}")
-                to_keep = (np.array(regimes) != regime_to_ignore)
+                    raise ValueError(
+                        f"Regime {regime_to_ignore} is not in the possible regimes: {self.all_regimes}"
+                    )
+                to_keep = np.array(regimes) != regime_to_ignore
                 data = data[to_keep]
                 masks = [mask for i, mask in enumerate(masks) if to_keep[i]]
-                regimes = np.array([regime for i, regime in enumerate(regimes) if to_keep[i]])
+                regimes = np.array(
+                    [regime for i, regime in enumerate(regimes) if to_keep[i]]
+                )
 
         # Determine train/test partitioning
         if isinstance(train_samples, float):
             train_samples = int(data.shape[0] * train_samples)
         if test_samples is None:
             test_samples = data.shape[0] - train_samples
-        assert train_samples + test_samples <= data.shape[0], "The number of examples to load must be " + \
-            "smaller than the total size of the dataset"
+        assert train_samples + test_samples <= data.shape[0], (
+            "The number of examples to load must be "
+            + "smaller than the total size of the dataset"
+        )
 
         # Shuffle and filter examples
         shuffle_idx = np.arange(data.shape[0])
@@ -88,20 +111,22 @@ class DataManagerFile(object):
 
         # Train/test split
         if not train:
-            if train_samples == data.shape[0]: # i.e. no test set
+            if train_samples == data.shape[0]:  # i.e. no test set
                 self.dataset = None
                 self.masks = None
                 self.regimes = None
             else:
-                self.dataset = torch.as_tensor(data[train_samples: train_samples + test_samples]).type(torch.Tensor)
+                self.dataset = torch.as_tensor(
+                    data[train_samples : train_samples + test_samples]
+                ).type(torch.Tensor)
                 if intervention:
-                    self.masks = masks[train_samples: train_samples + test_samples]
-                self.regimes = regimes[train_samples: train_samples + test_samples]
+                    self.masks = masks[train_samples : train_samples + test_samples]
+                self.regimes = regimes[train_samples : train_samples + test_samples]
         else:
-            self.dataset = torch.as_tensor(data[: train_samples]).type(torch.Tensor)
+            self.dataset = torch.as_tensor(data[:train_samples]).type(torch.Tensor)
             if intervention:
-                self.masks = masks[: train_samples]
-            self.regimes = regimes[: train_samples]
+                self.masks = masks[:train_samples]
+            self.regimes = regimes[:train_samples]
 
         # Normalize data
         self.mean, self.std = mean, std
@@ -114,66 +139,6 @@ class DataManagerFile(object):
         self.num_regimes = np.unique(self.regimes).shape[0]
         self.num_samples = self.dataset.size(0)
         self.dim = self.dataset.size(1)
-
-        self.initialize_interv_matrix()
-
-
-    def load_data(self):
-        """
-        Load the graph, mask, regimes, and data
-        """
-        # Load the graph
-        adjacency = np.load(os.path.join(self.file_path, f"DAG{self.i_dataset}.npy"))
-        self.adjacency = torch.as_tensor(adjacency).type(torch.Tensor)
-
-        if not self.intervention:
-            if self.dcd:
-                name_data = f"data_interv{self.i_dataset}.npy"
-            else:
-                name_data = f"data{self.i_dataset}.npy"
-        else:
-            name_data = f"data_interv{self.i_dataset}.npy"
-
-        # Load data
-        self.data_path = os.path.join(self.file_path, name_data)
-        data = np.load(self.data_path)
-
-        # Load intervention masks and regimes
-        masks = []
-        if self.intervention:
-            name_data = f"data_interv{self.i_dataset}.npy"
-            interv_path = os.path.join(self.file_path, f"intervention{self.i_dataset}.csv")
-            regimes = np.genfromtxt(os.path.join(self.file_path, f"regime{self.i_dataset}.csv"), delimiter=",")
-            regimes = regimes.astype(int)
-
-            # read masks
-            with open(interv_path, 'r') as f:
-                interventions_csv = csv.reader(f)
-                for row in interventions_csv:
-                    mask = [int(x) for x in row]
-                    masks.append(mask)
-        else:
-            regimes = np.array([0] * data.shape[0])
-
-        return data, masks, regimes
-
-    def initialize_interv_matrix(self):
-        """
-        Generate the intervention matrix I*. It is useful in the unknown case
-        to compare learned target to the ground truth
-        """
-        if self.intervention:
-            interv_matrix = np.zeros((self.dataset.shape[1], self.num_regimes))
-
-            regimes = np.sort(np.unique(self.regimes))
-            for i, regime in enumerate(regimes):
-                mask_idx = np.where(self.regimes == regime)[0][0]
-                interv_matrix[:, i] = self.convert_masks(np.array([mask_idx]))
-
-            self.gt_interv = 1 - interv_matrix
-        else:
-            self.gt_interv = None
-
 
     def convert_masks(self, idxs):
         """
@@ -194,7 +159,6 @@ class DataManagerFile(object):
 
         return masks
 
-
     def sample(self, batch_size):
         """
         Sample without replacement `batch_size` examples from the data and
@@ -202,11 +166,14 @@ class DataManagerFile(object):
         :param int batch_size: number of samples to sample
         :return: samples, masks, regimes
         """
-        sample_idxs = self.random.choice(np.arange(int(self.num_samples)), size=(int(batch_size),), replace=False)
+        sample_idxs = self.random.choice(
+            np.arange(int(self.num_samples)), size=(int(batch_size),), replace=False
+        )
         samples = self.dataset[torch.as_tensor(sample_idxs).long()]
         if self.intervention:
             masks = self.convert_masks(sample_idxs)
-            regimes = self.regimes[torch.as_tensor(sample_idxs).long()]
+            regimes = torch.as_tensor(self.regimes).long()
+            regimes = regimes[torch.as_tensor(sample_idxs).long()]
         else:
             masks = torch.ones_like(samples)
             regimes = None

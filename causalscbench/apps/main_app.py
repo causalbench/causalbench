@@ -30,14 +30,17 @@ from causalscbench.evaluation import (biological_evaluation,
 from causalscbench.models import training_regimes
 from causalscbench.models.arboreto_baselines import GENIE, GRNBoost
 from causalscbench.models.causallearn_models import GES, PC
-from causalscbench.models.dcdi_models import DCDI
+from causalscbench.models.dcdi_models import DCDI, DCDFG
 from causalscbench.models.feature_selection import (
     LassoFeatureSelection, RandomForestFeatureSelection)
 from causalscbench.models.gies import GIES
 from causalscbench.models.notears import NotearsLin, NotearsMLP
 from causalscbench.models.random_network import FullyConnected, RandomWithSize
 from causalscbench.models.sparsest_permutations import (
-    GreedySparsestPermutation, InterventionalGreedySparsestPermutation)
+    GreedySparsestPermutation,
+    InterventionalGreedySparsestPermutation,
+)
+from causalscbench.models.varsortability import Sortnregress
 
 DATASET_NAMES = [
     "weissmann_k562",
@@ -53,7 +56,7 @@ METHODS = [
     "random_forest",
     "grnboost",
     "genie",
-    "ges", 
+    "ges",
     "gies",
     "pc",
     "mvpc",
@@ -65,11 +68,16 @@ METHODS = [
     "notears-mlp-sparse",
     "DCDI-G",
     "DCDI-DSF",
+    "DCDFG-LIN",
+    "DCDFG-MLP",
     "corum",
     "lr",
     "string_network",
     "string_physical",
     "custom",
+    "chipseq",
+    "pooled_biological_networks",
+    "sortnregress",
 ]
 
 
@@ -87,7 +95,8 @@ class MainApp:
         fraction_partial_intervention: float = 1.0,
         subset_data: float = 1.0,
         exp_id: str = "",
-        max_path_length: int = 3,
+        max_path_length: int = -1,
+        omission_estimation_size: int = 0,
         filter: bool = False,
     ):
         """
@@ -105,7 +114,8 @@ class MainApp:
             fraction_partial_intervention (float, optional):  If training_regime is partial intervention, fraction of genes which should have interventional data. Defaults to 1.0.
             subset_data (float, optional): Option to subset the whole dataset for easier training. Defaults to 1.0.
             exp_id (str, optional): Unique experiment id (6 digit number). Default to randomly generated.
-            max_path_length (int, optional): Maximum length of path to consider for statistical evaluation. Default to 3.
+            max_path_length (int, optional): Maximum length of path to consider for statistical evaluation. Default to -1 (all paths).
+            omission_estimation_size (int, optional): Number of negative samples to draw to estimate the false omission rate. If 0, the FOR is not checked. 
         """
         self.data_directory = data_directory
         self.output_directory = create_experiment_folder(exp_id, output_directory)
@@ -120,12 +130,16 @@ class MainApp:
         self.exp_id = exp_id
         self.max_path_length = max_path_length
         self.filter = filter
+        self.omission_estimation_size = omission_estimation_size
+        self.check_false_omission_rate = omission_estimation_size > 0
         self.model = None
         self.dataset_splitter = None
         self.corum_evaluator = None
         self.lr_evaluator = None
         self.chipseq_evaluator = None
         self.quantitative_evaluator = None
+        self.pooled_biological_evaluator = None
+        self.pooled_biological_significant_evaluator = None
 
     def load_model(self):
         models_dict = {
@@ -144,20 +158,27 @@ class MainApp:
             "gsp": GreedySparsestPermutation(),
             "igsp": InterventionalGreedySparsestPermutation(),
             "notears-lin": NotearsLin(lambda1=0.0),
-            "notears-lin-sparse": NotearsLin(lambda1=0.01),
+            "notears-lin-sparse": NotearsLin(lambda1=0.001),
             "notears-mlp": NotearsMLP(lambda1=0.0),
-            "notears-mlp-sparse": NotearsMLP(lambda1=0.01),
+            "notears-mlp-sparse": NotearsMLP(lambda1=0.001),
             "DCDI-G": DCDI("DCDI-G"),
             "DCDI-DSF": DCDI("DCDI-DSF"),
+            "DCDFG-LIN": DCDFG("linear"),
+            "DCDFG-MLP": DCDFG("mlplr"),
             "corum": self.corum_evaluator,
             "lr": self.lr_evaluator,
             "string_network": self.string_network_evaluator,
             "string_physical": self.string_physical_evaluator,
+            "chipseq": self.chipseq_evaluator,
+            "pooled_biological_networks": self.pooled_biological_evaluator,
+            "sortnregress": Sortnregress(),
         }
         if self.model_name not in METHODS:
             raise NotImplementedError()
         if self.model_name == "custom":
-            self.model = get_if_valid_custom_function_file(self.inference_function_file_path)()
+            self.model = get_if_valid_custom_function_file(
+                self.inference_function_file_path
+            )()
         else:
             self.model = models_dict[self.model_name]
 
@@ -196,6 +217,15 @@ class MainApp:
         self.quantitative_evaluator = statistical_evaluation.Evaluator(
             expression_matrix_test, interventions_test, gene_names
         )
+        output_pooled_biological_evaluator = self.pooled_biological_evaluator(None, None, gene_names, "", 0)
+        pooled_biological_network_significant = set()
+        for edge in output_pooled_biological_evaluator:
+            if self.quantitative_evaluator.evaluate_network([edge], max_path_length=0)["output_graph"]["true_positives"] > 0:
+                pooled_biological_network_significant.add(edge)
+        self.pooled_biological_significant_evaluator = statistical_evaluation.Evaluator(
+            pooled_biological_network_significant
+        )
+
 
     def train_and_evaluate(self):
         if self.training_regime == training_regimes.TrainingRegime.Observational:
@@ -231,6 +261,7 @@ class MainApp:
             "subset_data": self.subset_data,
             "exp_id": self.exp_id,
             "max_path_length": self.max_path_length,
+            "omission_estimation_size": self.omission_estimation_size,
             "filter": self.filter,
         }
         with open(os.path.join(self.output_directory, "arguments.json"), "w") as output:
@@ -258,8 +289,12 @@ class MainApp:
         chipseq_evaluation = self.chipseq_evaluator.evaluate_network(
             output_network, directed=True
         )
+        pooled_biological_evaluation = (
+            self.pooled_biological_evaluator.evaluate_network(output_network)
+        )
+        pooled_biological_sigificant_evaluation = self.pooled_biological_significant_evaluator.evaluate_network(output_network, directed=True)
         quantitative_test_evaluation = self.quantitative_evaluator.evaluate_network(
-            output_network, self.max_path_length
+            output_network, self.max_path_length, self.check_false_omission_rate, self.omission_estimation_size,
         )
         logging.info("Model evaluation finished.")
         metrics = {
@@ -269,7 +304,9 @@ class MainApp:
             "string_network_evaluation": string_network_evaluation,
             "string_physical_evaluation": string_physical_evaluation,
             "chipseq_evaluation": chipseq_evaluation,
-            "run_time": end_time - start_time
+            "pooled_biological_evaluation": pooled_biological_evaluation,
+            "pooled_biological_sigificant_evaluation": pooled_biological_sigificant_evaluation,
+            "run_time": end_time - start_time,
         }
         with open(os.path.join(self.output_directory, "metrics.json"), "w") as output:
             json.dump(metrics, output)

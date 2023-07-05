@@ -34,14 +34,16 @@ class GRNBoost(AbstractInferenceModel):
         expression_matrix, gene_names = remove_lowly_expressed_genes(
             expression_matrix, gene_names, expression_threshold=0.25
         )
-        local_cluster = distributed.LocalCluster(n_workers=20, threads_per_worker=10)
+
+        local_cluster = distributed.LocalCluster(n_workers=25, threads_per_worker=5)
+
         custom_client = distributed.Client(local_cluster)
         network = algo.grnboost2(
             expression_data=expression_matrix,
             gene_names=gene_names,
             client_or_address=custom_client,
             seed=seed,
-            early_stop_window_length=15,
+            early_stop_window_length=10,
             verbose=True,
         )
         return [(i, j) for i, j in network[["TF", "target"]].values]

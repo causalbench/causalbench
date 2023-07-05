@@ -38,7 +38,7 @@ class Evaluator(object):
         edges = set()
         gene_names = set(gene_names)
         for i, j in self.ground_truth_subnetwork:
-            if i in gene_names and j in gene_names:
+            if i in gene_names and j in gene_names and i != j:
                 edges.add((i, j))
         return list(edges)
 

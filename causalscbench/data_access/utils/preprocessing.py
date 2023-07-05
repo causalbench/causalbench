@@ -71,18 +71,17 @@ def preprocess_dataset(dataset_path: str, summary_stats: pd.DataFrame = None):
     # Normalize data
     sc.pp.normalize_per_cell(data_expr_raw, key_n_counts='UMI_count')
     sc.pp.log1p(data_expr_raw)  
+    data_expr_raw_df = data_expr_raw.to_df()
     intervened_genes = list(data_expr_raw.obs["gene_id"])
     gene_to_interventions = dict()
     for i, intervention in enumerate(intervened_genes):
-        gene_to_interventions.setdefault(intervention, []).append(i)
+        if intervention in set(data_expr_raw_df.columns.to_list()) or intervention == "non-targeting":
+            gene_to_interventions.setdefault(intervention, []).append(i)
     intervened_genes_set = set()
     for gene, cell_indices in gene_to_interventions.items():
         if len(cell_indices) > 100:
             intervened_genes_set.add(gene)
-    for i in range(len(intervened_genes)):
-        if intervened_genes[i] not in intervened_genes_set:
-            intervened_genes[i] = "excluded"
-    data_expr_raw_df = data_expr_raw.to_df()
+    intervened_genes = ["excluded" if gene not in intervened_genes_set else gene for gene in intervened_genes]
     data_expr_raw_perturbed_only = data_expr_raw_df[data_expr_raw_df.columns[data_expr_raw_df.columns.isin(intervened_genes_set)]]
     gene_ids = data_expr_raw_perturbed_only.columns.to_list()
     return data_expr_raw_perturbed_only.to_numpy(), gene_ids, intervened_genes

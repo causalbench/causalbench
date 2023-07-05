@@ -1,6 +1,6 @@
 # CausalBench
 ![Python version](https://img.shields.io/badge/Python-3.8-blue)
-![Library version](https://img.shields.io/badge/Version-1.0.0-blue)
+![Library version](https://img.shields.io/badge/Version-1.1.0-blue)
 
 ## Introduction
 
@@ -40,7 +40,10 @@ causalbench_run \
     --training_regime observational \
     --model_name pc \
     --subset_data 1.0 \
-    --model_seed 0
+    --model_seed 0 \
+    --do_filter \
+    --max_path_length -1 \
+    --omission_estimation_size 500
 ```
 
 Results are written to the folder at `/path/to/output/`, and processed datasets will be cached at `/path/to/data/storage`. See the MainApp class for more hyperparameter options, especially in the (partial) interventional setting.

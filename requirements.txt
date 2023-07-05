@@ -14,6 +14,7 @@ torchvision
 tqdm
 magic-impute
 openpyxl
+pytorch_lightning
 setuptools
 scprep
 scanpy

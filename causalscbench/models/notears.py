@@ -68,12 +68,12 @@ class NotearsMLP(AbstractInferenceModel):
         if not training_regime == TrainingRegime.Observational:
             return []
         expression_matrix, gene_names = remove_lowly_expressed_genes(
-            expression_matrix, gene_names, expression_threshold=0.30
+            expression_matrix, gene_names, expression_threshold=0.25
         )
         causalscbench.third_party.notears.utils.set_random_seed(seed)
         model = causalscbench.third_party.notears.nonlinear.NotearsMLP(dims=[len(gene_names), 10, 1], bias=True)
         adjacency = causalscbench.third_party.notears.nonlinear.notears_nonlinear(
-            model, expression_matrix, lambda1=self.lambda1, lambda2=self.lambda1, max_iter=15
+            model, expression_matrix, lambda1=self.lambda1, lambda2=self.lambda1, max_iter=20
         )
         indices = np.transpose(np.nonzero(adjacency))
         edges = set()

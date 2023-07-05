@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import random
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -24,7 +25,7 @@ class Evaluator(object):
         expression_matrix: np.array,
         interventions: List[str],
         gene_names: List[str],
-        p_value_threshold=0.1,
+        p_value_threshold=0.05,
     ) -> None:
         """
         Evaluation module to quantitatively evaluate a network using held-out data.
@@ -41,6 +42,7 @@ class Evaluator(object):
             self.gene_to_interventions.setdefault(intervention, []).append(i)
         self.expression_matrix = expression_matrix
         self.p_value_threshold = p_value_threshold
+        self.gene_names = gene_names
 
     def get_observational(self, child: str) -> np.array:
         """
@@ -69,7 +71,7 @@ class Evaluator(object):
             self.gene_to_interventions[parent], self.gene_to_index[child]
         ]
 
-    def evaluate_network(self, network: List[Tuple], max_path_length = 3) -> Dict:
+    def evaluate_network(self, network: List[Tuple], max_path_length = 3, check_false_omission_rate=False, omission_estimation_size=0) -> Dict:
         """
         Use a non-parametric Mannwhitney rank-sum test to test wether perturbing an upstream does have
         an effect on the downstream children genes. The assumptions is that intervening on a parent gene
@@ -78,7 +80,10 @@ class Evaluator(object):
 
         Args:
             network: output network as a list of tuples, where (A, B) indicates that gene A acts on gene B
-            max_path_length: maximum length of paths to consider for evaluation
+            max_path_length: maximum length of paths to consider for evaluation. If -1, check paths of any length.
+            check_false_omission_rate: whether to check the false omission rate of the predicted graph. 
+                                        The false omission rate is defined as (FN / (FN + TN)), FN = false negative and TN = true negative
+            omission_estimation_size: how many negative pairs (a pair predicted to have no interaction, i.e, there is no path in the output graph) to draw to estimate the false omission rate
 
         Returns:
             Number of true positive and false positive edges for both original graph and all connected graph
@@ -92,9 +97,12 @@ class Evaluator(object):
 
         all_connected_network = {**network_as_dict}
 
-        # Augment graph with paths of length smaller or equal to max_path_length
+        # Test graph with paths of length smaller or equal to max_path_length
+        all_path_results = []
+        if max_path_length == -1:
+            max_path_length = len(self.gene_names)
         for _ in range(max_path_length - 1):
-            new_all_connected_network = {
+            single_step_deeper_all_connected_network = {
                 v: n.union(
                     *[
                         all_connected_network[nn]
@@ -104,23 +112,47 @@ class Evaluator(object):
                 )
                 for v, n in all_connected_network.items()
             }
-            if new_all_connected_network == all_connected_network:
+            single_step_deeper_all_connected_network = {v: c - {v} for v, c in single_step_deeper_all_connected_network.items()}
+            if single_step_deeper_all_connected_network == all_connected_network:
                 break
-            all_connected_network = new_all_connected_network
+            new_edges = {
+                key: single_step_deeper_all_connected_network[key] - all_connected_network[key]
+                for key in single_step_deeper_all_connected_network
+            }
+            (
+                true_positive_connected,
+                false_positive_connected,
+                wasserstein_distances_connected,
+            ) = self._evaluate_network(new_edges)
+            all_path_results.append({
+                "true_positives": true_positive_connected,
+                "false_positives": false_positive_connected,
+                "wasserstein_distance": {
+                    "mean": np.mean(wasserstein_distances_connected)
+                },
+            })
+            all_connected_network = single_step_deeper_all_connected_network
 
-        all_connected_network = {v: c - {v} for v, c in all_connected_network.items()}
-        if all_connected_network == network_as_dict:
-            (
-                true_positive_connected,
-                false_positive_connected,
-                wasserstein_distances_connected,
-            ) = true_positive, false_positive, wasserstein_distances
-        else: 
-            (
-                true_positive_connected,
-                false_positive_connected,
-                wasserstein_distances_connected,
-            ) = self._evaluate_network(all_connected_network)
+        if check_false_omission_rate:
+            edges = set()
+            # Draw omission_estimation_size edges from the negative set (edges predicted to have no interaction)
+            # to estimate the false omission rate and the associated mean wasserstein distance
+            while len(edges) < omission_estimation_size:
+                pair = random.sample(range(len(self.gene_names)), 2)
+                edge = self.gene_names[pair[0]], self.gene_names[pair[1]]
+                if edge[0] in all_connected_network and edge[1] in all_connected_network[edge[0]]:
+                    continue
+                edges.add(edge)
+            network_as_dict = {}
+            for a, b in edges:
+                network_as_dict.setdefault(a, set()).add(b)
+            res_random = self._evaluate_network(network_as_dict)
+            false_omission_rate = res_random[0] / omission_estimation_size
+            negative_mean_wasserstein = np.mean(res_random[2])
+        else:
+            false_omission_rate = -1
+            negative_mean_wasserstein = -1
+
 
         return {
             "output_graph": {
@@ -128,13 +160,9 @@ class Evaluator(object):
                 "false_positives": false_positive,
                 "wasserstein_distance": {"mean": np.mean(wasserstein_distances)},
             },
-            "all_path_output": {
-                "true_positives": true_positive_connected,
-                "false_positives": false_positive_connected,
-                "wasserstein_distance": {
-                    "mean": np.mean(wasserstein_distances_connected)
-                },
-            },
+            "all_path_results": all_path_results,
+            "false_omission_rate": false_omission_rate,
+            "negative_mean_wasserstein": negative_mean_wasserstein
         }
 
     def _evaluate_network(self, network_as_dict):
@@ -146,27 +174,13 @@ class Evaluator(object):
             for child in children:
                 observational_samples = self.get_observational(child)
                 interventional_samples = self.get_interventional(child, parent)
-                wasserstein_distance = scipy.stats.wasserstein_distance(
-                    observational_samples, interventional_samples
-                )
-                wasserstein_distances.append(wasserstein_distance)
-                fraction_outliers = 1 - (
-                    sum(observational_samples > 0.0) / len(observational_samples)
-                )
-                fraction_outliers *= 0.9
-                outliers_to_remove = int(fraction_outliers * len(observational_samples))
-                observational_samples = np.sort(observational_samples)[
-                    outliers_to_remove:
-                ]
-                outliers_to_remove = int(
-                    fraction_outliers * len(interventional_samples)
-                )
-                interventional_samples = np.sort(interventional_samples)[
-                    outliers_to_remove:
-                ]
                 ranksum_result = scipy.stats.mannwhitneyu(
                     observational_samples, interventional_samples
                 )
+                wasserstein_distance = scipy.stats.wasserstein_distance(
+                    observational_samples, interventional_samples, 
+                )
+                wasserstein_distances.append(wasserstein_distance)
                 p_value = ranksum_result[1]
                 if p_value < self.p_value_threshold:
                     # Mannwhitney test rejects the hypothesis that the two distributions are similar
