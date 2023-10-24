@@ -137,6 +137,7 @@ class Evaluator(object):
             edges = set()
             # Draw omission_estimation_size edges from the negative set (edges predicted to have no interaction)
             # to estimate the false omission rate and the associated mean wasserstein distance
+            random.seed(0)
             while len(edges) < omission_estimation_size:
                 pair = random.sample(range(len(self.gene_names)), 2)
                 edge = self.gene_names[pair[0]], self.gene_names[pair[1]]

@@ -209,6 +209,16 @@ class MainApp:
             string_physical_pairs
         )
         self.chipseq_evaluator = biological_evaluation.Evaluator(chipseq_pairs)
+        pooled_biological_pairs = corum.union(
+            lr_pairs, string_network_pairs, string_physical_pairs, chipseq_pairs
+        )
+        network_undirected = set()
+        for i, j in pooled_biological_pairs:
+            network_undirected.add((i, j))
+            network_undirected.add((j, i))
+        self.pooled_biological_evaluator = biological_evaluation.Evaluator(
+            network_undirected
+        )
         (
             expression_matrix_test,
             interventions_test,

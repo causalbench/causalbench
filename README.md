@@ -1,6 +1,6 @@
 # CausalBench
 ![Python version](https://img.shields.io/badge/Python-3.8-blue)
-![Library version](https://img.shields.io/badge/Version-1.1.0-blue)
+![Library version](https://img.shields.io/badge/Version-1.1.1-blue)
 
 ## Introduction
 
