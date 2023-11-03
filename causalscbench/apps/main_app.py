@@ -232,7 +232,7 @@ class MainApp:
         for edge in output_pooled_biological_evaluator:
             if self.quantitative_evaluator.evaluate_network([edge], max_path_length=0)["output_graph"]["true_positives"] > 0:
                 pooled_biological_network_significant.add(edge)
-        self.pooled_biological_significant_evaluator = statistical_evaluation.Evaluator(
+        self.pooled_biological_significant_evaluator = biological_evaluation.Evaluator(
             pooled_biological_network_significant
         )
 
