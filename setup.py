@@ -18,7 +18,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='causalbench',
-    version='1.1.1',
+    version='1.1.2',
     python_requires=">=3.8",
     packages=find_packages(),
     package_data={
