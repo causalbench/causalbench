@@ -304,7 +304,7 @@ class MainApp:
         )
         pooled_biological_sigificant_evaluation = self.pooled_biological_significant_evaluator.evaluate_network(output_network, directed=True)
         quantitative_test_evaluation = self.quantitative_evaluator.evaluate_network(
-            output_network, self.max_path_length, self.check_false_omission_rate, self.omission_estimation_size,
+            output_network, self.max_path_length, self.check_false_omission_rate, self.omission_estimation_size, seed=self.model_seed
         )
         logging.info("Model evaluation finished.")
         metrics = {

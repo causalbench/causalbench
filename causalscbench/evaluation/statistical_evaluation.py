@@ -71,7 +71,7 @@ class Evaluator(object):
             self.gene_to_interventions[parent], self.gene_to_index[child]
         ]
 
-    def evaluate_network(self, network: List[Tuple], max_path_length = 3, check_false_omission_rate=False, omission_estimation_size=0) -> Dict:
+    def evaluate_network(self, network: List[Tuple], max_path_length = 3, check_false_omission_rate=False, omission_estimation_size=0, seed=0) -> Dict:
         """
         Use a non-parametric Mannwhitney rank-sum test to test wether perturbing an upstream does have
         an effect on the downstream children genes. The assumptions is that intervening on a parent gene
@@ -137,7 +137,7 @@ class Evaluator(object):
             edges = set()
             # Draw omission_estimation_size edges from the negative set (edges predicted to have no interaction)
             # to estimate the false omission rate and the associated mean wasserstein distance
-            random.seed(0)
+            random.seed(seed)
             while len(edges) < omission_estimation_size:
                 pair = random.sample(range(len(self.gene_names)), 2)
                 edge = self.gene_names[pair[0]], self.gene_names[pair[1]]

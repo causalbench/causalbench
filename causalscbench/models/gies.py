@@ -33,6 +33,7 @@ class GIES(AbstractInferenceModel):
         training_regime: TrainingRegime,
         seed: int = 0,
     ) -> List[Tuple]:
+        gies.np.bool = bool
         expression_matrix, gene_names = remove_lowly_expressed_genes(
             expression_matrix, gene_names, expression_threshold=0.5
         )
