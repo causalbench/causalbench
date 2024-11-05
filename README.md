@@ -77,6 +77,11 @@ class FullyConnected(AbstractInferenceModel):
                 edges.add((b, a))
         return list(edges)
 ```
+## Contributing
+
+We welcome external contributions to help expand and improve the CausalBench project! If you're interested in contributing, please feel free to submit a PR. We recognize and appreciate all contributions by acknowledging contributors directly in the README under a dedicated section. If your contribution is associated with a published paper, we are also happy to cite it alongside your name.
+
+Whether you’re proposing a new method, adding new features, improving existing methods, suggesting additional datasets, or enhancing/extending the evaluation metrics, your insights and expertise can significantly impact gene network inference research. Let's work together to advance our understanding and methodologies in causal inference within single-cell gene expression data!
 
 ## Citation
 
